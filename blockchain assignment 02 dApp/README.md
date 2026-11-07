@@ -1,7 +1,7 @@
 # Course Feedback Board — Mini dApp (MG3012 Assignment 2)
 
 **Course:** MG3012 – Blockchain Technology for Business (BSFT, Fall 2026) · **Instructor:** Dr. Usama Arshad
-**Student:** YOUR NAME · **Roll No:** YOUR ROLL NO
+**Student:** mahnoor · **Roll No:** 24i5606
 
 A small decentralized application: a **Solidity smart contract** deployed on the **Sepolia testnet**
 plus a **single-page HTML/CSS/JavaScript frontend** that talks to it through **MetaMask** and **ethers.js v6**.
