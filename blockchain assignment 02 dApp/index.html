@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Course Feedback Board | MG3012 Mini dApp</title>
+  <meta name="description" content="Mini dApp: Solidity smart contract + HTML/JS frontend on Sepolia." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- floating background hearts (decoration only) -->
+  <div class="floaties" aria-hidden="true">
+    <span>♡</span><span>✿</span><span>☆</span><span>♡</span><span>✧</span><span>❀</span><span>♡</span><span>☆</span>
+  </div>
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="site-header">
+    <!-- IMAGE: inline SVG logo (data URI, so no extra file is needed) -->
+    <img
+      class="logo"
+      id="mascot"
+      alt="Cute pink blockchain cube logo (click me!)"
+      title="Click me! (◕‿◕)"
+      src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4 58 18v28L32 60 6 46V18z' fill='%23f472b6'/%3E%3Cpath d='M32 4 58 18 32 32 6 18z' fill='%23fbcfe8'/%3E%3Cpath d='M32 32v28L6 46V18z' fill='%23db2777'/%3E%3Ccircle cx='22' cy='38' r='2.4' fill='%23fff'/%3E%3Ccircle cx='42' cy='38' r='2.4' fill='%23fff'/%3E%3Cpath d='M26 44q6 5 12 0' stroke='%23fff' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"
+      width="72" height="72"
+    />
+    <div>
+      <h1>Course Feedback Board <span class="kao-inline">(◕‿◕)♡</span></h1>
+      <p class="subtitle">
+        MG3012 &ndash; Blockchain Technology for Business &middot; Assignment 2 &middot; Sepolia testnet
+      </p>
+    </div>
+    <p class="bubble" id="bubble" role="status" aria-live="polite">Hi hi! Click me ♡</p>
+  </header>
+
+  <main>
+    <!-- ===================== WALLET ===================== -->
+    <section class="card" id="wallet-section">
+      <h2>✿ 1. Wallet</h2>
+      <p>Connect MetaMask and make sure you are on the <strong>Sepolia</strong> test network. (っ◕‿◕)っ</p>
+      <button id="connectBtn" type="button">Connect MetaMask ♡</button>
+      <ul class="info-list">
+        <li><span>Status:</span> <strong id="walletStatus">Not connected (｡•́︿•̀｡)</strong></li>
+        <li><span>Account:</span> <code id="account">&ndash;</code></li>
+        <li><span>Network:</span> <strong id="network">&ndash;</strong></li>
+        <li id="addrRow"><span>Address:</span> <input id="addrInput" type="text" placeholder="Paste your deployed CONTRACT address (0x…)" spellcheck="false" autocomplete="off" /></li>
+        <li><span>Contract:</span> <a id="contractLink" href="#" target="_blank" rel="noopener noreferrer"><code id="contractAddr">&ndash;</code></a></li>
+      </ul>
+    </section>
+
+    <!-- ===================== READ ===================== -->
+    <section class="card" id="read-section">
+      <h2>☆ 2. Board Statistics (read)</h2>
+      <p>These values are read directly from the smart contract (no gas required). ٩(◕‿◕)۶</p>
+      <div class="stats">
+        <div class="stat"><span class="stat-label">Total feedback ♡</span><span class="stat-value" id="count">&ndash;</span></div>
+        <div class="stat"><span class="stat-label">Average rating ★</span><span class="stat-value" id="average">&ndash;</span></div>
+      </div>
+      <button id="refreshBtn" type="button" class="secondary" disabled>Refresh from blockchain ⟳</button>
+    </section>
+
+    <!-- ===================== WRITE ===================== -->
+    <section class="card" id="write-section">
+      <h2>❀ 3. Post Feedback (write)</h2>
+      <p>This sends a transaction, so MetaMask will ask you to confirm and pay a little Sepolia ETH in gas. (੭ˊᵕˋ)੭</p>
+      <form id="postForm">
+        <label for="message">Your message <span class="hint">(1&ndash;280 characters)</span></label>
+        <textarea id="message" rows="3" maxlength="280" placeholder="e.g. Loved the week 7 Solidity lab! ♡" required></textarea>
+        <div class="counter"><span id="charCount">0</span>/280</div>
+
+        <label id="ratingLabel">Rating <span class="hint" id="ratingMood">(tap the stars!)</span></label>
+        <div class="star-picker" id="starPicker" role="radiogroup" aria-labelledby="ratingLabel"></div>
+        <!-- real form value (kept as <select> so it works even if the star picker fails) -->
+        <select id="rating" class="visually-hidden" aria-hidden="true" tabindex="-1">
+          <option value="5">5 &ndash; Excellent</option>
+          <option value="4">4 &ndash; Good</option>
+          <option value="3">3 &ndash; Okay</option>
+          <option value="2">2 &ndash; Poor</option>
+          <option value="1">1 &ndash; Very poor</option>
+        </select>
+
+        <button id="postBtn" type="submit" disabled>Post feedback ✧</button>
+      </form>
+
+      <h3>Transaction result</h3>
+      <div id="txResult" class="tx-result" role="status" aria-live="polite">No transaction yet. (・ω・)</div>
+    </section>
+
+    <!-- ===================== FEEDBACK LIST ===================== -->
+    <section class="card" id="list-section">
+      <h2>♡ 4. Feedback Wall</h2>
+      <p>Newest first. You can upvote other people&rsquo;s entries (one upvote per address per entry).</p>
+      <ol id="feedbackList" class="feedback-list">
+        <li class="empty">Connect your wallet to load feedback. (っ˘ω˘ς)</li>
+      </ol>
+    </section>
+
+    <!-- ===================== HELP ===================== -->
+    <section class="card" id="help-section">
+      <h2>✧ Need testnet ETH or help?</h2>
+      <ul>
+        <li><a href="https://sepolia-faucet.pk910.de/" target="_blank" rel="noopener noreferrer">Sepolia PoW faucet</a></li>
+        <li><a href="https://sepolia.etherscan.io/" target="_blank" rel="noopener noreferrer">Sepolia Etherscan</a></li>
+        <li><a href="https://remix.ethereum.org/" target="_blank" rel="noopener noreferrer">Remix IDE</a></li>
+        <li><a href="https://docs.ethers.org/v6/" target="_blank" rel="noopener noreferrer">ethers.js v6 documentation</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Built for MG3012 &middot; Dr. Usama Arshad &middot; Fall 2026 &nbsp;(⁠◍⁠•⁠ᴗ⁠•⁠◍⁠)⁠♡</p>
+  </footer>
+
+  <!-- ethers.js v6 (UMD build exposes global `ethers`) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.4/ethers.umd.min.js"></script>
+
+  <script>
+    /* =========================================================
+     *  CONFIGURATION  -->  PASTE YOUR DEPLOYED CONTRACT ADDRESS
+     * ========================================================= */
+    let CONTRACT_ADDRESS = "0xf072AD0AA7939925E4a2393964382Dc663Ae1a05";   // deployed CourseFeedbackBoard on Sepolia
+    const SEPOLIA_CHAIN_ID = 11155111n;
+    const SEPOLIA_CHAIN_HEX = "0xaa36a7";
+    const ETHERSCAN = "https://sepolia.etherscan.io";
+
+    // Human-readable ABI (matches SmartContract.sol)
+    const ABI = [
+      "function postFeedback(string message, uint8 rating) returns (uint256 id)",
+      "function upvote(uint256 id)",
+      "function getFeedback(uint256 id) view returns (address author, string message, uint8 rating, uint32 upvotes, uint64 timestamp)",
+      "function getFeedbackCount() view returns (uint256)",
+      "function getAverageRating() view returns (uint256)",
+      "event FeedbackPosted(uint256 indexed id, address indexed author, uint8 rating, string message)",
+      "event Upvoted(uint256 indexed id, address indexed voter, uint32 newUpvoteCount)"
+    ];
+
+    /* ------------------------- helpers ------------------------- */
+    const $ = (id) => document.getElementById(id);
+    let provider, signer, contract, userAddress;
+
+    const shorten = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+    const isValidAddress = () => /^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS);
+
+    function setTx(kind, html) {
+      const box = $("txResult");
+      box.className = "tx-result " + kind;   // pending | success | error
+      const KAO = { pending: "(｡•́︿•̀｡) hang tight…", success: "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧ yay!", error: "(╥﹏╥) oh no…" };
+      box.innerHTML = `<div class="kao">${KAO[kind] || ""}</div>` + html;   // only ever fed trusted/escaped strings
+      if (kind === "success") burst(window.innerWidth / 2, window.innerHeight / 3);
+    }
+    const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    function friendlyError(e) {
+      if (e && (e.code === "ACTION_REJECTED" || e.code === 4001)) return "You rejected the request in MetaMask.";
+      if (e && e.reason) return e.reason;
+      if (e && e.shortMessage) return e.shortMessage;
+      return (e && e.message) ? e.message : String(e);
+    }
+
+    function setConnectedUI(connected) {
+      $("refreshBtn").disabled = !connected;
+      $("postBtn").disabled = !connected;
+    }
+
+    /* ------------------------- connect ------------------------- */
+    async function connectWallet() {
+      if (typeof window.ethereum === "undefined") {
+        $("walletStatus").textContent = "MetaMask not found – please install it.";
+        return;
+      }
+      if (typeof ethers === "undefined") {
+        $("walletStatus").textContent = "ethers.js failed to load (check your internet).";
+        return;
+      }
+      if (!isValidAddress()) {
+        const typed = $("addrInput").value.trim();
+        if (/^0x[a-fA-F0-9]{40}$/.test(typed)) {
+          CONTRACT_ADDRESS = typed;
+          try { localStorage.setItem("contractAddr", typed); } catch (_) {}
+        } else {
+          $("walletStatus").textContent = "Paste your deployed contract address (0x + 40 characters) in the Address box first.";
+          return;
+        }
+      }
+      try {
+        $("walletStatus").textContent = "Connecting…";
+        provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+
+        let net = await provider.getNetwork();
+        if (net.chainId !== SEPOLIA_CHAIN_ID) {
+          try {
+            await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: SEPOLIA_CHAIN_HEX }] });
+          } catch (switchErr) {
+            $("walletStatus").textContent = "Please switch MetaMask to Sepolia.";
+            $("network").textContent = net.name + " (wrong network)";
+            return;
+          }
+          provider = new ethers.BrowserProvider(window.ethereum);   // refresh after network switch
+          net = await provider.getNetwork();
+        }
+
+        signer = await provider.getSigner();
+        userAddress = await signer.getAddress();
+        const code = await provider.getCode(CONTRACT_ADDRESS);
+        if (code === "0x") {
+          $("walletStatus").textContent = "No contract found at that address on Sepolia. Did you paste your wallet address? Use the address from Remix 'Deployed Contracts'.";
+          $("network").textContent = "Sepolia";
+          return;
+        }
+        contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+        $("walletStatus").textContent = "Connected ✅ (ﾉ´ヮ`)ﾉ*:･ﾟ✧";
+        mascotSay("Connected! Yay ♡ (ﾉ◕ヮ◕)ﾉ");
+        $("account").textContent = shorten(userAddress);
+        $("account").title = userAddress;
+        $("network").textContent = net.chainId === SEPOLIA_CHAIN_ID ? "Sepolia" : net.name;
+        $("contractAddr").textContent = shorten(CONTRACT_ADDRESS);
+        $("contractLink").href = `${ETHERSCAN}/address/${CONTRACT_ADDRESS}`;
+        $("connectBtn").textContent = "Reconnect";
+        setConnectedUI(true);
+
+        await refreshAll();
+      } catch (e) {
+        $("walletStatus").textContent = "Connection failed: " + friendlyError(e);
+      }
+    }
+
+    /* --------------------------- read --------------------------- */
+    async function loadStats() {
+      const [count, avg] = await Promise.all([contract.getFeedbackCount(), contract.getAverageRating()]);
+      $("count").textContent = count.toString();
+      $("average").textContent = count === 0n ? "No ratings yet" : (Number(avg) / 100).toFixed(2) + " / 5";
+      return count;
+    }
+
+    async function loadFeedbackList(count) {
+      const list = $("feedbackList");
+      if (count === 0n) {
+        list.innerHTML = '<li class="empty">No feedback yet &ndash; be the first to post! (⁠ᵔ⁠ᴥ⁠ᵔ⁠)</li>';
+        return;
+      }
+      const frag = document.createDocumentFragment();   // build off-screen, swap in once (no flicker)
+      const total = Number(count);
+      const from = Math.max(0, total - 20);        // show newest 20
+      const items = await Promise.all(
+        Array.from({ length: total - from }, (_, k) => contract.getFeedback(total - 1 - k).then((r) => ({ id: total - 1 - k, r })))
+      );
+      for (const { id, r } of items) {
+        const [author, message, rating, upvotes, ts] = r;
+        const li = document.createElement("li");
+        li.className = "feedback-item";
+        li.value = id + 1;                           // numbering = entry id + 1
+
+        const head = document.createElement("div");
+        head.className = "fb-head";
+        const stars = document.createElement("span");
+        stars.className = "stars";
+        stars.textContent = "★".repeat(Number(rating)) + "☆".repeat(5 - Number(rating));
+        stars.setAttribute("aria-label", `${rating} out of 5`);
+        const who = document.createElement("span");
+        who.className = "fb-author";
+        who.textContent = (author.toLowerCase() === userAddress.toLowerCase() ? "You" : shorten(author)) +
+          " · " + new Date(Number(ts) * 1000).toLocaleString();
+        head.append(stars, who);
+
+        const body = document.createElement("p");
+        body.className = "fb-msg";
+        body.textContent = message;                  // textContent => no HTML injection
+
+        const foot = document.createElement("div");
+        foot.className = "fb-foot";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "secondary small";
+        btn.textContent = `💖 Upvote (${upvotes})`;
+        if (author.toLowerCase() === userAddress.toLowerCase()) { btn.disabled = true; btn.title = "You can't upvote your own entry"; }
+        btn.addEventListener("click", () => upvote(id, btn));
+        foot.append(btn);
+
+        li.append(head, body, foot);
+        frag.append(li);
+      }
+      list.replaceChildren(frag);
+    }
+
+    async function refreshAll() {
+      try {
+        const count = await loadStats();
+        await loadFeedbackList(count);
+      } catch (e) {
+        setTx("error", "Could not read from the contract: " + esc(friendlyError(e)) +
+          "<br>Check that CONTRACT_ADDRESS is correct and you are on Sepolia.");
+      }
+    }
+
+    /* --------------------------- write -------------------------- */
+    async function sendTx(label, txPromiseFn) {
+      try {
+        setTx("pending", `⏳ ${esc(label)}: waiting for MetaMask confirmation…`);
+        const tx = await txPromiseFn();
+        setTx("pending",
+          `⏳ Transaction sent. Waiting for confirmation…<br>Hash: <a href="${ETHERSCAN}/tx/${tx.hash}" target="_blank" rel="noopener noreferrer"><code>${tx.hash}</code></a>`);
+        const receipt = await tx.wait();
+        if (receipt.status === 1) {
+          setTx("success",
+            `✅ ${esc(label)} confirmed in block <strong>${receipt.blockNumber}</strong>.<br>` +
+            `Hash: <a href="${ETHERSCAN}/tx/${tx.hash}" target="_blank" rel="noopener noreferrer"><code>${tx.hash}</code></a><br>` +
+            `Gas used: ${receipt.gasUsed.toString()}`);
+        } else {
+          setTx("error", "❌ Transaction reverted on-chain.");
+        }
+        await refreshAll();
+        return true;
+      } catch (e) {
+        setTx("error", "❌ " + esc(friendlyError(e)));
+        return false;
+      }
+    }
+
+    async function postFeedback(evt) {
+      evt.preventDefault();
+      const message = $("message").value.trim();
+      const rating = Number($("rating").value);
+      if (!message) { setTx("error", "❌ Please write a message first."); return; }
+      $("postBtn").disabled = true;
+      const ok = await sendTx("Post feedback", () => contract.postFeedback(message, rating));
+      if (ok) { $("message").value = ""; $("charCount").textContent = "0"; }
+      $("postBtn").disabled = false;
+    }
+
+    async function upvote(id, btn) {
+      btn.disabled = true;
+      const ok = await sendTx(`Upvote #${id + 1}`, () => contract.upvote(id));
+      if (!ok) btn.disabled = false;
+    }
+
+    /* ---------------------- cute interactive extras ---------------------- */
+    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // confetti-ish burst of hearts/stars at (x, y)
+    function burst(x, y, n = 18) {
+      if (reduceMotion) return;
+      const bits = ["♡", "✿", "★", "✧", "❀", "💖"];
+      for (let i = 0; i < n; i++) {
+        const el = document.createElement("span");
+        el.className = "confetti";
+        el.textContent = bits[Math.floor(Math.random() * bits.length)];
+        const ang = Math.random() * Math.PI * 2, dist = 60 + Math.random() * 140;
+        el.style.left = x + "px"; el.style.top = y + "px";
+        el.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+        el.style.setProperty("--dy", Math.sin(ang) * dist - 40 + "px");
+        el.style.fontSize = 14 + Math.random() * 18 + "px";
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 1300);
+      }
+    }
+
+    // little sparkle wherever you click
+    document.addEventListener("click", (e) => { if (e.target.closest("button, a")) burst(e.clientX, e.clientY, 5); });
+
+    // mascot (click the logo)
+    const MASCOT_LINES = ["Hi hi! ♡ (◕‿◕)", "You're doing great! ٩(◕‿◕)۶", "Gas fees are tiny on Sepolia (ᵔᴥᵔ)", "Blockchain is just a shared notebook ✿", "Don't share your seed phrase! (⊙_⊙)", "Good luck with the assignment ☆彡", "Pat pat ♡ (っ˘ω˘ς)"];
+    let bubbleTimer;
+    function mascotSay(text) {
+      const b = $("bubble"); b.textContent = text; b.classList.add("show");
+      clearTimeout(bubbleTimer); bubbleTimer = setTimeout(() => b.classList.remove("show"), 3500);
+    }
+    $("mascot").addEventListener("click", (e) => {
+      mascotSay(MASCOT_LINES[Math.floor(Math.random() * MASCOT_LINES.length)]);
+      burst(e.clientX, e.clientY, 10);
+      e.target.classList.remove("wiggle"); void e.target.offsetWidth; e.target.classList.add("wiggle");
+    });
+    setTimeout(() => mascotSay("Hi hi! Click me ♡"), 600);
+
+    // star-rating picker (drives the hidden <select id="rating">)
+    const MOODS = { 1: "(╥﹏╥) very poor", 2: "(｡•́︿•̀｡) poor", 3: "(・ω・) okay", 4: "(◕‿◕) good", 5: "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧ excellent!" };
+    function paintStars(n) {
+      document.querySelectorAll("#starPicker .star").forEach((s) => s.classList.toggle("on", Number(s.dataset.v) <= n));
+    }
+    function setRating(n) {
+      $("rating").value = String(n); paintStars(n);
+      $("ratingMood").textContent = "(" + MOODS[n] + ")";
+      document.querySelectorAll("#starPicker .star").forEach((s) => s.setAttribute("aria-checked", String(Number(s.dataset.v) === n)));
+    }
+    for (let v = 1; v <= 5; v++) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "star"; b.dataset.v = v; b.textContent = "★";
+      b.setAttribute("role", "radio"); b.setAttribute("aria-label", v + " out of 5 stars");
+      b.addEventListener("click", (e) => { setRating(v); burst(e.clientX, e.clientY, 6); });
+      b.addEventListener("mouseenter", () => paintStars(v));
+      $("starPicker").append(b);
+    }
+    $("starPicker").addEventListener("mouseleave", () => paintStars(Number($("rating").value)));
+    setRating(5);
+
+    // character counter
+    $("message").addEventListener("input", () => {
+      const n = $("message").value.length;
+      $("charCount").textContent = n;
+      $("charCount").parentElement.classList.toggle("warn", n > 250);
+    });
+
+    /* ------------------------- wiring -------------------------- */
+    $("connectBtn").addEventListener("click", connectWallet);
+    $("refreshBtn").addEventListener("click", refreshAll);
+    $("postForm").addEventListener("submit", postFeedback);
+
+    if (window.ethereum) {
+      // Reload on account / network change so the UI never shows stale state
+      window.ethereum.on?.("accountsChanged", () => window.location.reload());
+      window.ethereum.on?.("chainChanged", () => window.location.reload());
+    }
+
+    // Hide the address box if the address is hard-coded; otherwise restore the last pasted one
+    if (isValidAddress()) {
+      $("addrRow").style.display = "none";
+    } else {
+      try { const saved = localStorage.getItem("contractAddr"); if (saved) $("addrInput").value = saved; } catch (_) {}
+    }
+
+    // Show the contract address even before connecting
+    if (isValidAddress()) {
+      $("contractAddr").textContent = shorten(CONTRACT_ADDRESS);
+      $("contractLink").href = `${ETHERSCAN}/address/${CONTRACT_ADDRESS}`;
+    } else {
+      $("contractAddr").textContent = "not set yet";
+    }
+  </script>
+</body>
+</html>
